@@ -109,3 +109,5 @@ def show_subpage(subpage1_clicks, subpage2_clicks, subpage3_clicks):
 
 if __name__ == '__main__':
     app.run_server(debug=True, host='0.0.0.0')
+    
+    #192.168.56.1
