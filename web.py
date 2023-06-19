@@ -3,12 +3,10 @@ from dash import Dash, dcc, html, Input, Output
 import dash_bootstrap_components as dbc
 from testin_text import testing_str1
 from fig1 import fig1
-
+from fig2 import fig2
 app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
-app.title = 'Visualizer v1.2'
-
+app.title = 'Visualizer '
 def subpage_1_layout():
-    
     return html.Div([
         html.H1('Title1',
                 ),
@@ -31,7 +29,6 @@ def subpage_1_layout():
 
 
 def subpage_2_layout():
-    from fig2 import fig2
     return html.Div([
         html.H1('Titl32'),
         dcc.Graph(figure=fig2)
@@ -108,6 +105,5 @@ def show_subpage(subpage1_clicks, subpage2_clicks, subpage3_clicks):
 
 
 if __name__ == '__main__':
-    app.run_server(debug=True, host='0.0.0.0')
     
-    #192.168.56.1
+    app.run_server(debug=True)
