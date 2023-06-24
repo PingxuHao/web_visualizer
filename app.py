@@ -30,7 +30,7 @@ app.layout = dcc.Loading(  # <- Wrap App with Loading Component
                 dash.page_container
             ]
         )
-    ],
+    ], #style={'background-color': '#F5F5F5'}
     color='primary',  # <- Color of the loading spinner
     fullscreen=True  # <- Loading Spinner should take up full screen
 )
@@ -38,4 +38,4 @@ app.layout = dcc.Loading(  # <- Wrap App with Loading Component
 server = app.server
 
 if __name__ == '__main__':
-    app.run_server(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 8050)))
+    app.run_server()
