@@ -2,7 +2,7 @@ import dash
 from dash import html, dcc
 import dash_bootstrap_components as dbc
 from navbar import create_navbar
-
+import os
 NAVBAR = create_navbar()
 # To use Font Awesome Icons
 FA621 = "https://use.fontawesome.com/releases/v6.2.1/css/all.css"
@@ -38,4 +38,4 @@ app.layout = dcc.Loading(  # <- Wrap App with Loading Component
 server = app.server
 
 if __name__ == '__main__':
-    app.run_server(debug=False)
+    app.run_server(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 8050)))
