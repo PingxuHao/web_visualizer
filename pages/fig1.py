@@ -132,8 +132,9 @@ def fig1_func (a11 = 1, a12 = -1, a21 = 1, a22 = 2):
         xaxis_title="x",
         yaxis_title="y",
         autosize=False,
-        width=800,
-        height=800)
+        width=740, #magic numbers change with scale, dont keep the same
+        height=805,#keeping them the same makes the suqare not a square, for some god damn reason 
+        showlegend=False)
     fig1.update_xaxes(
         showgrid = True,
         #showline=True,
@@ -262,10 +263,6 @@ def fig1_func (a11 = 1, a12 = -1, a21 = 1, a22 = 2):
             )
         return [_ys,X_prime, Y_prime,unit_v_prime,loc_frames]
         
-
-
-
-
     def add_frame (A,num_frames,square,X,Y,unit_v,total_frames):
         loc_frames = []
         #square
@@ -416,7 +413,7 @@ def fig1_func (a11 = 1, a12 = -1, a21 = 1, a22 = 2):
         'steps': [{
             'args': [[f'frame_{i}'], {'frame': {'duration': 1, 'redraw': False},
                                     'mode': 'immediate',
-                                    'transition': {'duration': 10}}],
+                                    'transition': {'duration': 2}}],
             'label': str(i + 1), 'method': 'animate'} for i in range(total_num_frames)        
                 ],
         'currentvalue': {'font': {'size': 20}, 'prefix': 'Frame: ', 'visible': True, 'xanchor': 'right'}
@@ -437,3 +434,4 @@ def fig1_func (a11 = 1, a12 = -1, a21 = 1, a22 = 2):
     #fig1.show()
     return fig1
 f1t = fig1_func()
+#f1t.show()

@@ -12,16 +12,16 @@ app = dash.Dash(
     __name__,
     suppress_callback_exceptions=True,
     external_stylesheets=[
-        dbc.themes.LUX,  # Dash Themes CSS
+        dbc.themes.LUX,  
         FA621,  # Font Awesome Icons CSS
     ],
     title=APP_TITLE,
-    use_pages=True,  # New in Dash 2.7 - Allows us to register pages
+    use_pages=True,  # New in Dash 2.7, Allows us to register pages, see Dash document for details
 )
 
 
 
-app.layout = dcc.Loading(  # <- Wrap App with Loading Component
+app.layout = dcc.Loading(  #Loading Component
     id='loading_page_content',
     children=[
         html.Div(
@@ -38,4 +38,4 @@ app.layout = dcc.Loading(  # <- Wrap App with Loading Component
 server = app.server
 
 if __name__ == '__main__':
-    app.run_server(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 8050)))
+    app.run_server(debug=True, host='127.0.0.1', port=int(os.environ.get('PORT', 8050)))
