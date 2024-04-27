@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive SVG Map</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        path {
+        transition: fill 0.2s ease;  /* Smooth transition for fill color change */
+        }
+        .info-box {
+            position: absolute;
+            width: 200px; 
+            height: 150px; /* Adjusted for transition */
+            background-color: lightblue;
+            border: 2px solid darkblue;
+            padding: 10px;
+            display: none;
+            opacity: 0;
+            z-index: 1000;
+            font-size: 14px;
+            color: black;
+            pointer-events: none;
+            transition: opacity 0.5s ease, width 0.5s ease, height 0.5s ease, transform 0.5s ease, left 0.5s ease, top 0.5s ease;
+            overflow: hidden;
+            transform: scale(1); /* Ensures transform is transitionable */
+        }
+
+        .info-box.expanded {
+            position: fixed;
+            width: 80vw; /* Full viewport width */
+            height: 80vh; /* Full viewport height */
+            top: 2.5vh; /* Center vertically */
+            left: 2.5vw; /* Center horizontally */
+            transform: scale(1); /* Reset transform */
+            overflow: auto;
+            pointer-events: auto;
+            z-index: 2000;
+            display: block;
+            opacity: 1;
+            text-align: center;
+        }
+
+        .info-box img, .info-box video {
+            width: 100%; /* Full width of the box */
+            height: auto; /* Maintain aspect ratio */
+        }
+
+        .edit-content {
+            min-height: 100px; /* Minimum height */
+            width: 98%; /* Full width */
+            background: white;
+            color: black;
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-top: 10px;
+            overflow: auto; /* Allow internal scrolling */
+        }
+
+        .close-button {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            padding: 5px 10px;
+            background: red;
+            color: white;
+            cursor: pointer;
+            border: none;
+        }
+        .year-display {
+            font: Arial;
+            font-size: 24px;
+            bottom: 20px;
+            width: 100%;
+            text-align: center;
+            font-size: 16px;
+            color: darkblue;
+        }
+        .slider-container {
+            display: none; /* Ensures the container is visible */
+            position: fixed;
+            left: 20%; /* Center align the container */
+            bottom: 25%; /* Positions the container at the lowest 25% line of the screen */
+            width: 60%; /* Width slightly larger than the slider to create a border effect */
+            height: 70px; /* Height larger than the slider to create a border effect */
+            background-color: #f8f9fa; /* Light background for the box */
+            border: 3px solid #dee2e6; /* Border to make it pop out */
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1); /* Shadow for 3D effect */
+            padding: 10px; /* Space around the slider inside the box */
+            box-sizing: border-box; /* Includes padding and border in the width and height */
+            z-index: 99; /* Ensure it's below the slider if using higher z-index for slider */
+        }
+        .info-box img {
+            width: 100%; /* Ensure the image width fits the container width */
+            height: auto; /* Maintain the aspect ratio of the image */
+            width: 500px;
+            display: block; /* Remove any extra space below the image */
+        }
+
+        .time-slider {
+            display: block;
+            bottom: 0; /* Adjusted for positioning inside the container */
+            left: 0; /* Adjusted for positioning inside the container */
+            width: 100%; /* Takes full width of the container */
+            height: 50px; /* Fixed height */
+            z-index: 100; /* Ensure slider is above the container visually */
+            
+        }
+
+        .floating-panel, #center-panel {
+            position: fixed;
+            padding: 20px;
+            box-sizing: border-box;
+            z-index: 10;
+            display: none; /* Initially hidden */
+            overflow-y: auto;
+            background-color: rgba(255,255,255,0.9);
+            transition: opacity 0.5s ease;
+            opacity: 0; /* Start invisible for fading */
+        }
+        #left-panel, #right-panel {
+            width: 30%;
+            height: 100%;
+        }
+        #left-panel {
+            left: 0;
+            top: 0;
+        }
+        #right-panel {
+            right: 0;
+            top: 0;
+        }
+        #center-panel {
+            position: fixed;
+            width: 80%; /* Set to 50% of the viewport width */
+            height: 60%; /* Set to 50% of the viewport height */
+            top: 35%;
+            left: 50%;
+            transform: translate(-50%, -50%); /* Center the panel */
+            padding: 20px;
+        }
+        
+        #motif-button, #timeline-button, #explore-button {
+            position: fixed;
+            left: 50%;
+            transform: translateX(-50%);
+            bottom: 25%;
+            padding: 10px 20px;
+            background-color: #FF6347; /* Red color as the initial state */
+            color: white;
+            font-size: 16px;
+            border: none;
+            cursor: pointer;
+            display: none; /* Displayed by default */
+        }
+        #timeline-button {
+            bottom: 15%; /* Position below the motif button */
+        }
+        #explore-button {
+            bottom: 5%; /* Position below the timeline button */
+        }
+
+    
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
+        }
+        svg {
+            width: 100%;
+            height: 100%;
+        }
+        #historical-info {
+            position: fixed;
+            bottom: 40%;
+            width: 100%;
+            text-align: center;
+            display: none;
+            background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent black background */
+            color: white; /* White text for better visibility */
+            font-size: 18px; /* Larger font size for readability */
+            padding: 20px 0; /* Padding to give some space around the text */
+        }
+    </style>
+    
+    
+</head>
+<body>
+    <svg></svg>
+    <div id="historical-info">
+        <p id="history-text"></p>
+    </div>
+
+    <div id="left-panel" class="floating-panel">
+        <img src="moses.png" alt="t1">
+        <p>In the Book of Exodus, Moses is born at a time when the Pharaoh of Egypt has ordered the death of all newborn Hebrew boys to control the population of the Israelites. Moses' mother, Jochebed, hides him for three months and when she can no longer keep him hidden, she places him in a basket made of bulrushes and coats it with pitch. She then sets the basket adrift in the Nile River. The basket is found by the Pharaoh's daughter, who is moved with compassion and decides to raise Moses as her own son, thereby saving him from the Pharaoh’s decree.</p>
+    </div>
+    <div id="right-panel" class="floating-panel">
+        <img src="sargon.png" alt="t1" style="width: 370px;">
+        <p>According to ancient texts, Sargon of Akkad's birth story contains elements of secrecy and miraculous survival similar to that of Moses. Sargon's mother, a high priestess, gives birth in secret and places her newborn in a basket made of reeds, sealing it with pitch. She then sets the basket in the river Euphrates. The basket is eventually discovered by Akki, a water-drawer, who rescues Sargon and raises him as his own son, setting Sargon on a path to future greatness as a ruler.</p>
+    </div>
+    <div id="center-panel" class="floating-panel">
+        <p>                                 </p>
+        <img src="center.png" alt="t1" style="width: 370px; margin-left: 270px;" >
+        <p>
+            The birth legends of Sargon and Moses share the infant-exposure motif. This motif includes the dangerous situation the legendary figure faced, being abandoned or cast away (usually in a river or water), magical survival in a dangerous situation, and being raised by individuals other than biological parents. <br><br>  Scholars have long noted the similarities between Moses and Sargon, which are consistent across various versions of the legends. Given the geographical and temporal proximity of these two legends, it can be concluded that the author of Exodus 2 drew upon the Sargon legend (Römer 3). <br> However, many other birth stories of legendary figures across different cultures also share this motif. This pattern is "largely explained by an intrinsic curiosity in the origins of those who rise above the crowd to shape the lives and thought of the common man" (Lewis 150). <br> <br>   Press the Explore World button to see other examples of legendary birth stories that share this motif.
+        </p>
+    </div>
+    <button id="motif-button">Moses and Sargon's Birth Stories</button>
+    <button id="timeline-button">Show Timeline</button>
+    <button id="explore-button">Explore the World</button>
+    <div class="info-box"></div>
+    <div class="tooltip"></div>
+    <div id="info-t1" class="info-box">
+    <img src="t1.png" alt="" style="width: 200px;">
+    <div class="content">
+        <strong>Birth Legend of Romus and Remulus in Rome</strong>
+        <p>Information about t1.</p>
+        <p style="color: darkblue; cursor: pointer;">Click to read more...</p>
+    </div>
+</div>
+<div id="info-t2" class="info-box">
+    <img src="t2.png" alt="t2">
+    <div class="content">
+        <strong>t2</strong>
+        <p>Information about t2.</p>
+        <p style="color: darkblue; cursor: pointer;">Click to read more...</p>
+    </div>
+</div>
+<div id="info-t3" class="info-box">
+    <img src="t3.png" alt="t3">
+    <div class="content">
+        <strong>t3</strong>
+        <p>Information about t3.</p>
+        <p style="color: darkblue; cursor: pointer;">Click to read more...</p>
+    </div>
+</div>
+<div id="info-t4" class="info-box">
+    <img src="t4.png" alt="t4">
+    <div class="content">
+        <strong>t4</strong>
+        <p>Information about t4.</p>
+        <p style="color: darkblue; cursor: pointer;">Click to read more...</p>
+    </div>
+</div>
+
+    
+
+
+
+<div class="slider-container" id="time-slider">
+    <div class="year-display" id="year-display">Year: 2500 BCE</div>
+    <input type="range" min="-2500" max="-1000" value="-2500" class="time-slider" id="realSlider" step="1">
+    
+</div>
+
+<script>
+    let isZoomed = false;
+    const buttons = {
+            motif: document.getElementById('motif-button'),
+            timeline: document.getElementById('timeline-button'),
+            explore: document.getElementById('explore-button')
+        };
+    const panels = {
+        left: document.getElementById('left-panel'),
+        right: document.getElementById('right-panel'),
+        center: document.getElementById('center-panel'),
+        timeSlider: document.getElementById('time-slider')
+    };
+    const motifButton = document.getElementById('motif-button');
+    const leftPanel = document.getElementById('left-panel');
+    const rightPanel = document.getElementById('right-panel');
+    const centerPanel = document.getElementById('center-panel');
+
+    buttons.motif.addEventListener('click', () => {
+            togglePanels('center');
+        });
+
+    buttons.timeline.addEventListener('click', () => {
+        if (buttons.timeline.textContent === "Show Timeline") {
+            document.getElementById('time-slider').style.display = 'block';
+            panels.left.style.display = 'none';
+            panels.right.style.display = 'none';
+            panels.center.style.display = 'none';
+            buttons.timeline.textContent = "Back to Main Page";
+            buttons.motif.style.display = 'none';
+            buttons.explore.style.display = 'none';
+        } else {
+            togglePanels('none');
+            document.getElementById('time-slider').style.display = 'none';
+            buttons.timeline.textContent = "Show Timeline";
+            buttons.motif.style.display = 'block';
+            buttons.explore.style.display = 'block';
+        }
+    });
+
+    buttons.explore.addEventListener('click', function() {
+        enableZoomAndDrag();
+        isZoomed = false;  // Reset zoom state
+        d3.select("svg").transition()
+            .duration(500)
+            .call(zoom.transform, initialTransform);  // Reset zoom using the initial transform
+        document.getElementById('time-slider').style.display = 'none';
+        
+        // Hide all panels
+        panels.left.style.display = 'none';
+        panels.right.style.display = 'none';
+        panels.center.style.display = 'none';
+        panels.timeSlider.style.display = 'none';
+
+        // Hide all buttons
+        buttons.motif.style.display = 'none';
+        buttons.timeline.style.display = 'none';
+        buttons.explore.style.display = 'none';  // This button also gets hidden as requested
+    });
+
+
+
+    motifButton.addEventListener('click', () => {
+            if (motifButton.textContent === "Similarities in Motif") {
+                leftPanel.style.opacity = 0;
+                rightPanel.style.opacity = 0;
+                centerPanel.style.display = 'block';
+                setTimeout(() => {
+                    leftPanel.style.display = 'none';
+                    rightPanel.style.display = 'none';
+                    centerPanel.style.display = 'block';
+                    setTimeout(() => {
+                        centerPanel.style.opacity = 1;
+                    }, 10); // Delay for CSS transition to take effect
+                }, 500); // Match the transition duration
+                motifButton.textContent = "Moses's and Sargon's Birth Story";
+                motifButton.style.backgroundColor = '#4CAF50';
+            } else {
+                centerPanel.style.opacity = 0;
+                setTimeout(() => {
+                    centerPanel.style.display = 'none';
+                    leftPanel.style.display = 'block';
+                    rightPanel.style.display = 'block';
+                    setTimeout(() => {
+                        leftPanel.style.opacity = 1;
+                        rightPanel.style.opacity = 1;
+                    }, 10); // Delay for CSS transition to take effect
+                }, 500); // Match the transition duration
+                motifButton.textContent = "Similarities in Motif";
+                motifButton.style.backgroundColor = '#FF6347';
+            }
+        });
+
+    const zoom = d3.zoom()
+        .scaleExtent([0.5, 6]) // Defines the minimum and maximum zoom levels
+        .on("zoom", (event) => {
+            d3.select("svg g").attr("transform", event.transform); // Apply the zoom transform to the <g> element
+        });
+
+    const initialTransform = d3.zoomIdentity.translate(-800, -50).scale(1.2); // Example: Translate
+    const activeCountries = ["t1", "t4"];
+
+    d3.select("svg")
+        .call(zoom)
+        .call(zoom.transform, initialTransform) // Apply initial zoom and pan
+        .append("g")
+        .attr("transform", initialTransform.toString()); // Set initial transform on the <g> element
+
+    d3.xml("edited_maps.svg")
+        .then(data => {
+            d3.select("svg g").node().append(data.documentElement);
+            setupInteractions(); // Set up additional interactions after the SVG is loaded
+        });
+
+    function zoomToCountry(countryName) {
+        let transform;
+        switch(countryName) {
+            case 't2':
+                transform = d3.zoomIdentity.translate(-5400, -1250).scale(5);
+                break;
+            case 't3':
+                transform = d3.zoomIdentity.translate(-5400, -1250).scale(5);
+                break;
+            default:
+                return;
+        }
+        d3.select('svg').transition()
+            .duration(400)
+            .call(zoom.transform, transform)
+            .on("end", function() {
+                isZoomed = true;  // Indicate that the map is zoomed
+                d3.selectAll("#motif-button, #timeline-button, #explore-button").style("display", "block");
+                // add here
+                disableZoomAndDrag();  // Disable zoom and drag after transition
+            });
+        togglePanels(true);
+        //document.getElementById('time-slider').style.display = 'block';
+    }
+
+    function disableZoomAndDrag() {
+        d3.select("svg").on(".zoom", null);  // Remove zoom event listeners
+    }
+
+
+
+    d3.select("body").append("button")
+        .text("Reset Zoom")
+        .style("position", "absolute")
+        .style("top", "10px")
+        .style("left", "10px")
+        .style("display", "none")  // Initially hidden
+        .on("click", function() {
+            enableZoomAndDrag();
+            isZoomed = false;  // Reset zoom state
+            d3.select("svg").transition()
+                .duration(750)
+                .call(zoom.transform, initialTransform);
+            document.getElementById('time-slider').style.display = 'none';
+            document.getElementById('slider-container').style.display = 'none';
+            togglePanels(isZoomed);
+            this.style.display = "none";  // Hide button
+        });
+
+    function enableZoomAndDrag() {
+        d3.select("svg").call(zoom);  // Reattach zoom behavior
+    }
+
+    function setupClickEvent() {
+        d3.selectAll('path').on('click', function(event, d) {
+            const countryName = d3.select(this).attr('name');
+            console.log("Clicked country:", countryName); // Log the country name when a path is clicked
+
+            if (countryName === 't2' || countryName === 't3') {
+                console.log("Zooming to country:", countryName); // Log when zooming to 't2' or 't3'
+                zoomToCountry(countryName);
+            } else if (activeCountries.includes(countryName)) {
+                console.log("Displaying info for:", countryName); // Log when handling active countries
+                displayInfoBox(event, countryName).then(() => {
+                    expandInfoBox(countryName);
+                }).catch(error => {
+                    console.error("Error displaying info box:", error);
+                });
+            } else {
+                console.log("No action taken for:", countryName); // Log when no action is taken
+            }
+        });
+    }
+
+
+
+
+
+
+    function updateYearAndColor() {
+        const year = parseInt(document.getElementById('realSlider').value);
+        document.getElementById('year-display').innerText = `Year: ${year} BCE`;
+        const historyText = document.getElementById('history-text');
+        const historicalInfo = document.getElementById('historical-info');
+
+        // Update color based on year thresholds
+        if (year <= -2300) {
+            d3.select('[name="t2"]').style('fill', 'rgb(255, 167, 171)');
+            d3.select('[name="t3"]').style('fill', 'rgb(255, 167, 171)');
+            historicalInfo.style.display = 'none';  // Hide the history info if not within the specified ranges
+        } else if (year >= -2300 && year < 1300) {
+            d3.select('[name="t2"]').style('fill', 'lightblue');
+            d3.select('[name="t3"]').style('fill', 'rgb(255, 167, 171)');
+            historyText.innerText = "Sargon was born in the Akkadian Empire at 2300s BC";
+            historicalInfo.style.display = 'block';  // Show the history info
+        }
+
+        if (year >= -1300) {
+            d3.select('[name="t2"]').style('fill', 'lightblue');
+            d3.select('[name="t3"]').style('fill', 'lightblue');
+            historyText.innerHTML = "Moses is born in the Land of Goshen at 1300s BC<br>Sargon was born in the Akkadian Empire at 2300s BC";
+            historicalInfo.style.display = 'block';  // Show the history info
+        }
+    }
+
+
+    document.getElementById('time-slider').addEventListener('input', updateYearAndColor);
+
+    function displayInfoBox(event, countryName) {
+        const infoBox = d3.select(`#info-${countryName}`)
+            .style("left", `${event.pageX + 10}px`)
+            .style("top", `${event.pageY + 10}px`)
+            .style("display", "block")
+            .interrupt() // Interrupt any ongoing transitions
+            .style("opacity", 0)
+            .transition()
+            .duration(300)
+            .style("opacity", 1);
+
+        // Return a promise that resolves when the transition ends
+        return new Promise((resolve, reject) => {
+            infoBox.on('end interrupt', function() {
+                if (d3.select(this).style('display') !== 'none') {
+                    resolve();
+                } else {
+                    reject(new Error('Info box was hidden before transition could complete.'));
+                }
+            });
+        }).catch(error => {
+            console.error("Error with info box transition: ", error);
+        });
+    }
+
+
+    function hideInfoBox(countryName) {
+        d3.select(`#info-${countryName}`)
+            .style("opacity", 1)
+            .transition()
+            .duration(200)
+            .style("opacity", 0)
+            .end().then(() => {
+                d3.select(`#info-${countryName}`).style("display", "none");
+            });
+    }
+
+    function expandInfoBox(countryName) {
+        let content = "";
+        let pic = ""
+        if (countryName === "t1") {
+            content = content = `The birth story of Romulus and Remus, the legendary founders of Rome, prominently features the infant-exposure motif common to many mythological and historical narratives. According to the legend, the twins were the sons of Rhea Silvia, a Vestal Virgin, and Mars, the god of war. Because their existence threatened the rule of their great-uncle Amulius, he ordered them to be cast into the River Tiber to die.
+        
+        Mirroring the elements of the motif, the dangerous situation involves their abandonment in a basket on the river. However, the river's waters, rather than claiming their lives, gently carried the basket to safety. This magical survival is a key aspect of the motif, showing the infants protected by divine or mystical forces, despite the peril they faced.
+        
+        Upon reaching land, the twins were discovered by a she-wolf, who, instead of harming them, nursed them. This aspect of being raised by a non-human creature further amplifies the magical survival element, integrating the natural world into their miraculous preservation and upbringing.
+        
+        Later, a shepherd named Faustulus found them and, with his wife Acca Larentia, raised them as their own. This transition to a human family embodies the final element of the motif: being raised by individuals other than their biological parents.`;
+   ;    
+        } else if (countryName === "t4") {
+        content = `The birth story of Krishna, a central figure in Hindu mythology, shares several thematic elements with the infant-exposure motif found in the legends of Sargon and Moses, though it manifests in unique ways. According to Hindu texts, particularly the Bhagavata Purana, Krishna was born in a time of peril. His uncle, King Kamsa, aware of a prophecy that predicted his death at the hands of Krishna, his sister Devaki's eighth child, decided to kill all her children at birth.
+        
+        To save Krishna, his birth was shrouded in secrecy and divine intervention. On the night of his birth, the guards fell into a magical sleep, and the prison doors miraculously opened. Vasudeva, Krishna's father, took the newborn Krishna across the Yamuna river to ensure his safety. This river crossing during a raging storm, where the river's waters are said to have parted to allow Vasudeva safe passage, echoes the infant-exposure motif where the child survives through supernatural means.
+        
+        Upon reaching the other side, Krishna was left in the care of his foster parents, Nanda and Yashoda, in the village of Gokula. This element mirrors the motif of being raised by individuals other than biological parents. Krishna's upbringing in Gokula was humble, hiding his royal lineage and divine destiny until he grew up to fulfill the prophecy by defeating Kamsa.`;
+    }
+        d3.select(`#info-${countryName}`)
+            .style("left", "5vw")  // Reset left position
+            .style("top", "5vh")   // Reset top position
+            .classed("expanded", true)
+            .html(`
+                <button class="close-button" onclick="collapseInfoBox('${countryName}')">Close</button>
+                <img src="${countryName}.png" style="width: 300px; margin-left: 270px;" >
+
+                <div class="edit-content" contenteditable="true">
+                    ${content}
+                </div>
+            `);
+    }
+
+
+    function resetInfoBox() {
+        for (let i = 1; i <= 4; i++) {
+            // Select each element by its ID
+            d3.select(`#info-t${i}`).html('') // Clear existing content
+                .attr('class', 'info-box')
+                
+                .html(`
+                        <img src="t${i}.png" alt="t${i}">
+                        <div class="content">
+                            <strong>t${i}</strong>
+                            <p>Information about t${i}.</p>
+                            <p style="color: darkblue; cursor: pointer;">Click to read more...</p>
+                        </div>
+                    `
+                );
+        }
+    }
+
+
+    function collapseInfoBox(countryName) {
+        d3.select(`#info-${countryName}`)
+            .classed("expanded", false)
+            .transition()
+            .duration(200)
+            .style("opacity", 0)
+            resetInfoBox()
+            
+            ;
+        
+    }
+
+    
+    function setupInteractions() {
+        d3.selectAll("path")
+            .on("mouseover", function(event, d) {
+                const countryName = d3.select(this).attr("name");
+                if (activeCountries.includes(countryName)) {
+                    displayInfoBox(event, countryName);
+                }
+            })
+            .on("mouseout", function() {
+                const countryName = d3.select(this).attr("name");
+                if (activeCountries.includes(countryName) && !d3.select(`#info-${countryName}`).classed("expanded")) {
+                    hideInfoBox(countryName);
+                }
+            });
+
+        setupClickEvent(); // Ensure this is defined to handle click interactions
+    };
+
+
+    function togglePanels(isZoomed) {
+            const displayStyle = isZoomed ? 'block' : 'none';
+            motifButton.style.display = displayStyle;
+            if (!isZoomed) {
+                leftPanel.style.display = displayStyle;
+                rightPanel.style.display = displayStyle;
+                centerPanel.style.display = 'none';
+                motifButton.textContent = "Similarities in Motif";
+                motifButton.style.backgroundColor = '#FF6347';
+            }
+        }
+</script>
+
+    
+    
+    
+</body>
+</html>
